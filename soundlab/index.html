@@ -55,6 +55,13 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 24px; }
 .knob { display: grid; gap: 6px; min-width: 0; }
 .knob[hidden] { display: none; }
+.knobs.inline { display: flex; }
+.knobs.inline .knob { display: flex; align-items: center; gap: 8px; }
+.knobs.inline select { background: var(--panel); padding: 7px 8px; }
+.pages { display: flex; gap: 8px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.page[hidden], .group[hidden] { display: none; }
+.page { display: grid; gap: 18px; }
 .knob .top { display: flex; justify-content: space-between; gap: 8px; }
 .knob output { font-family: var(--mono); color: var(--gold); font-variant-numeric: tabular-nums; }
 .knob input[type=range] { width: 100%; accent-color: var(--gold); }
@@ -67,7 +74,8 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
 .vol, .master { display: flex; align-items: center; gap: 8px; }
 .master { margin-left: auto; }
 .vol input, .master input { width: 140px; accent-color: var(--gold); }
-.sounds { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.sounds { display: grid; gap: 16px; align-items: start; }
+.sounds .list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 12px; }
 .group { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
 .group .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .group h3 { font-family: var(--display); font-weight: 400; font-size: 1.1rem; margin: 0; color: var(--gold); }
@@ -90,9 +98,14 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
 <div class="wrap">
   <header>
     <h1>Disclander Sound Lab</h1>
+    <nav class="pages" aria-label="Pages">
+      <button class="mood" id="tab-music" aria-pressed="true">Music</button>
+      <button class="mood" id="tab-sounds" aria-pressed="false">Sounds</button>
+    </nav>
     <label class="master" for="vol-master"><span class="label">Master</span><input id="vol-master" type="range" min="0" max="1" step="0.05" value="0.8"></label>
   </header>
 
+  <div class="page" id="page-music">
   <div class="sechead"><h2>Music</h2><label class="vol" for="vol-music"><span class="label">Volume</span><input id="vol-music" type="range" min="0" max="1.5" step="0.05" value="1"></label></div>
   <section aria-label="Mood">
     <div class="moods" id="moods"></div>
@@ -103,6 +116,7 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
     <button class="btn" id="next" title="A new piece of the same mood">Next piece</button>
     <label class="seed" for="seed">seed <input id="seed" type="number" min="0" max="99999" value="1"></label>
     <label class="check" for="loop"><input id="loop" type="checkbox" checked> keep playing</label>
+    <span class="knobs inline" id="style-slot"></span>
     <span class="status" id="status">pick a mood, press Play</span>
   </section>
 
@@ -125,10 +139,15 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
   </section>
   <p class="note">Every piece is written fresh from the mood and the seed, exactly as the game writes it. Turn a knob and the piece is rewritten at once. When something sounds right, copy the settings and send them over, and they become the game's own.</p>
 
+  </div>
+
+  <div class="page" id="page-sounds" hidden>
   <div class="sechead"><h2>Sounds</h2><span class="sub" id="sound-count"></span></div>
+  <div class="tabs" id="sound-tabs" role="tablist" aria-label="Kinds of sound"></div>
   <section class="sounds" id="sounds" aria-label="Sounds">
     <p class="note" id="no-sounds">Loading the game's sounds.</p>
   </section>
+  </div>
 </div>
 
 <script>
@@ -221,9 +240,20 @@ async function loadSounds() {
   catch { document.getElementById("no-sounds").textContent = "No sounds here yet. They load when the page sits beside the game's sound files."; return; }
   box.innerHTML = "";
   document.getElementById("sound-count").textContent = `${list.length} sounds`;
+  const tabs = document.getElementById("sound-tabs"); tabs.innerHTML = "";
+  // One kind of sound shows at a time; what is playing plays on.
+  const pick = (section) => {
+    for (const s of SECTIONS) {
+      document.getElementById("group-" + s).hidden = s !== section;
+      document.getElementById("soundtab-" + s).setAttribute("aria-pressed", s === section);
+    }
+  };
   for (const section of SECTIONS) {
     const items = list.filter((s) => s.section === section);
-    const g = document.createElement("div"); g.className = "group";
+    const t = document.createElement("button"); t.className = "mood"; t.id = "soundtab-" + section;
+    t.textContent = `${section} (${items.length})`; t.onclick = () => pick(section);
+    tabs.append(t);
+    const g = document.createElement("div"); g.className = "group"; g.id = "group-" + section;
     g.innerHTML = `<div class="head"><h3>${section}</h3><label class="vol" for="vol-${section}"><span class="label">Vol</span><input id="vol-${section}" type="range" min="0" max="1.5" step="0.05" value="1"></label><button class="btn small" id="stop-${section}">Stop</button></div><div class="list"></div>`;
     const ul = g.querySelector(".list");
     items.forEach((s, i) => {
@@ -241,7 +271,22 @@ async function loadSounds() {
     box.append(g);
     g.querySelector("#stop-" + section).onclick = () => stopSection(section);
   }
+  pick(SECTIONS[0]);
 }
+
+// The two pages: the music, and the sounds (at #sounds).
+function showPage(redraw) {
+  const sounds = location.hash === "#sounds";
+  document.getElementById("page-music").hidden = sounds;
+  document.getElementById("page-sounds").hidden = !sounds;
+  document.getElementById("tab-music").setAttribute("aria-pressed", !sounds);
+  document.getElementById("tab-sounds").setAttribute("aria-pressed", sounds);
+  if (!sounds && redraw) draw();
+}
+document.getElementById("tab-music").onclick = () => { history.replaceState(null, "", location.pathname + location.search); showPage(true); };
+document.getElementById("tab-sounds").onclick = () => { location.hash = "#sounds"; };
+window.addEventListener("hashchange", () => showPage(true));
+showPage(false);
 
 const oneShots = { Interface: new Set(), Effects: new Set(), Ambience: new Set() };
 async function playSound(s, b) {
@@ -288,7 +333,9 @@ function buildUi() {
   });
   const layers = document.getElementById("knobs");
   const boxes = {};
+  boxes.style = document.getElementById("style-slot");
   for (const [key, title] of LAYERS) {
+    if (key === "style") continue;
     const l = document.createElement("div"); l.className = "layer";
     l.innerHTML = (title ? `<h3>${title}</h3>` : "") + `<div class="knobs"></div>`;
     layers.append(l); boxes[key] = l.querySelector(".knobs");
