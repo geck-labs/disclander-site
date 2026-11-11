@@ -113,10 +113,7 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
 
   <section class="transport" aria-label="Playback">
     <button class="btn play" id="play">Play</button>
-    <button class="btn" id="next" title="A new piece of the same mood">Next piece</button>
     <label class="seed" for="seed">seed <input id="seed" type="number" min="0" max="99999" value="1"></label>
-    <label class="check" for="loop"><input id="loop" type="checkbox" checked> keep playing</label>
-    <label class="check" for="stream" title="One endless stream: pieces run into each other, and a new mood or style comes in at the next bar"><input id="stream" type="checkbox" checked> stream</label>
     <span class="knobs inline" id="style-slot"></span>
     <span class="status" id="status">pick a mood, press Play</span>
   </section>
@@ -138,7 +135,7 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
       <button class="btn" id="reset">Reset knobs</button>
     </div>
   </section>
-  <p class="note">Every piece is written fresh from the mood and the seed, exactly as the game writes it. Turn a knob and the piece is rewritten at once. When something sounds right, copy the settings and send them over, and they become the game's own.</p>
+  <p class="note">The music is one stream, written fresh as it plays from the mood, the style and the seed. A new mood or style comes in on the next bar; turn a knob and the music is rewritten at once. When something sounds right, copy the settings and send them over, and they become the game's own.</p>
 
   </div>
 
@@ -214,7 +211,9 @@ const color = (v) => css.getPropertyValue(v).trim();
 let lab, ctx, master, musicGain, groupGains = {}, beds = {}, buffer = null, startedAt = 0, notes = [], secs = 0;
 // The piece shown, the one lined up to follow it in a stream, and every piece still sounding.
 let cur = null, queued = null, live = [], nextTimer = null, swapTimer = null;
-const streaming = () => document.getElementById("stream").checked;
+// The lab plays one endless stream: pieces run into each other, with no songs that begin and end.
+const streaming = () => true;
+let playedFrom = 0;
 let mood = 1, playing = false, timer = null;
 const values = Object.fromEntries(KNOBS.map((k) => [k[0], plain(k)]));
 
@@ -370,9 +369,7 @@ function buildUi() {
   showKnobs();
   // Volume sliders made before the sounds load are hooked up when audio starts.
   document.getElementById("play").onclick = () => (playing ? stop() : start());
-  document.getElementById("next").onclick = () => { const s = document.getElementById("seed"); s.value = Number(s.value) + 1; fresh(); };
   document.getElementById("seed").addEventListener("change", () => fresh());
-  document.getElementById("stream").addEventListener("change", () => fresh(true));
   document.getElementById("reset").onclick = () => {
     // Every knob back to the mood's own; the style stays.
     for (const k of KNOBS) { if (k[0] === 11) continue; values[k[0]] = plain(k); const el = document.getElementById("knob-" + k[0] + (k[4] ? "-" + k[4] : "")); el.value = values[k[0]]; el.dispatchEvent(new Event("input")); }
@@ -408,7 +405,7 @@ function make() {
   audio();
   const buf = ctx.createBuffer(2, len, rate);
   buf.copyToChannel(left, 0); buf.copyToChannel(right, 1);
-  return { buffer: buf, notes: ns, secs: lab.secs(), join: lab.join(), bar: lab.beat() * 4, seed, mood, stream: streaming(), settings: settingsText(seed) };
+  return { buffer: buf, notes: ns, secs: lab.secs(), join: lab.join(), bar: lab.beat() * 4, seed, mood, stream: streaming(), fast: style() === "fast", settings: settingsText(seed) };
 }
 
 // Puts a piece on the page: its notes, voices and settings.
@@ -440,7 +437,7 @@ function launch(p, when, from = 0) {
   const src = ctx.createBufferSource(); src.buffer = p.buffer;
   const gain = ctx.createGain(); src.connect(gain); gain.connect(musicGain);
   p.src = src; p.gain = gain; p.at = when - from;
-  src.onended = () => { live = live.filter((x) => x !== p); if (p === cur && playing && !p.stream && !p.killed) ended(); };
+  src.onended = () => { live = live.filter((x) => x !== p); };
   src.start(when, from); live.push(p);
 }
 
@@ -487,15 +484,10 @@ function start() {
   killAll();
   if (cur.stream !== streaming()) compose();
   cur.killed = false;
-  launch(cur, ctx.currentTime); startedAt = cur.at; playing = true;
+  launch(cur, ctx.currentTime); startedAt = cur.at; playedFrom = cur.at; playing = true;
   document.getElementById("play").textContent = "Stop";
   plan();
   tick();
-}
-
-function ended() {
-  if (document.getElementById("loop").checked) { const s = document.getElementById("seed"); s.value = Number(s.value) + 1; compose(); start(); }
-  else stop();
 }
 
 function stop() { killAll(); playing = false; document.getElementById("play").textContent = "Play"; cancelAnimationFrame(timer); draw(); status(); }
@@ -513,9 +505,8 @@ function fresh(keepPlace) {
 }
 
 function status() {
-  const t = playing ? ctx.currentTime - startedAt : 0;
   const f = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-  document.getElementById("status").textContent = `${MOODS[cur ? cur.mood : mood]} · ${f(Math.min(t, secs))} / ${f(secs)}` + (playing && cur.stream ? " · stream" : "");
+  document.getElementById("status").textContent = playing ? `${MOODS[cur.mood]} · ${cur.fast ? "fast" : "slow"} · playing ${f(ctx.currentTime - playedFrom)}` : "pick a mood, press Play";
 }
 
 function tick() { draw(); status(); if (playing) timer = requestAnimationFrame(tick); }
