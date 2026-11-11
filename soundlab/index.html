@@ -328,7 +328,7 @@ function buildUi() {
     const b = document.createElement("button");
     b.className = "mood"; b.textContent = name; b.id = "mood-" + i;
     b.setAttribute("aria-pressed", i === mood);
-    b.onclick = () => { mood = i; document.querySelectorAll(".mood").forEach((m, j) => m.setAttribute("aria-pressed", j === mood)); fresh(); };
+    b.onclick = () => { mood = i; MOODS.forEach((_, j) => document.getElementById("mood-" + j).setAttribute("aria-pressed", j === mood)); fresh(); };
     row.append(b);
   });
   const layers = document.getElementById("knobs");
