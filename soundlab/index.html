@@ -199,8 +199,8 @@ let lab, ctx, master, musicGain, groupGains = {}, beds = {};
 // first began and how many frames have been lined up since, and the tune picked.
 let mx = null, bars = [], t0 = 0, frames = 0, pumpTimer = null, legendKey = "";
 let mood = 1, playing = false, timer = null;
-// How much music is kept lined up ahead: three bars, and no less than this many seconds. A change takes back what has
-// not begun, so this does not delay it.
+// How much music is kept lined up ahead: three bars, and no less than this many seconds. A change keeps the first of
+// them and takes back the rest, so it is never more than a bar and a bit away.
 const AHEAD = 2.5, BARS_AHEAD = 3;
 const values = Object.fromEntries(KNOBS.map((k) => [k[0], plain(k)]));
 
@@ -413,14 +413,13 @@ function pump() {
   bars = bars.filter((b) => b.at + b.secs > now - 12);
 }
 
-// A new tune, style or knob: the bars lined up but not yet begun are taken back and written again, so the change comes
-// in on the next bar heard.
+// A new tune, style or knob: the first bar not yet begun stays as it was written, a bar's lag before the change, and
+// the bars lined up after it are taken back and written again. So the change comes in on the second bar line from now.
 function steer() {
   writeSettings();
   if (!playing) return;
   setKnobs();
-  const soon = mx.currentTime + 0.25;
-  const ahead = bars.filter((b) => b.at > soon);
+  const ahead = bars.filter((b) => b.at > mx.currentTime).slice(1);
   const n = ahead.length ? lab.band_back(ahead.length) : 0;
   if (n) {
     const gone = ahead.slice(ahead.length - n);
