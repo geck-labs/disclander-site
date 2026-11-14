@@ -103,6 +103,13 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
 .maker h4 { font-family: var(--display); font-weight: 400; font-size: 1rem; margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .maker h4 small { font-family: var(--mono); font-size: 0.75rem; color: var(--dim); }
 .maker[data-in="1"] h4 small { color: var(--gold); }
+.fold { all: unset; cursor: pointer; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font: inherit; color: inherit; }
+.fold::before { content: "\25BE"; display: inline-block; width: 1em; color: var(--dim); }
+.fold[aria-expanded="false"]::before { content: "\25B8"; }
+.fold:hover::before { color: var(--fg); }
+.fold:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.layer.folded > :not(h3):not(.head), .maker.folded > :not(h4) { display: none; }
+.layer.folded .head > .btn { display: none; }
 .note { color: var(--dim); max-width: 65ch; margin: 0; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -435,6 +442,7 @@ function buildUi() {
     });
   }
   buildBand();
+  foldable();
   // Volume sliders made before the sounds load are hooked up when audio starts.
   document.getElementById("play").onclick = () => (playing ? stop() : start());
   document.getElementById("seed").addEventListener("change", () => { writeSettings(); if (playing) { stop(); start(); } });
@@ -450,6 +458,33 @@ function buildUi() {
   window.addEventListener("resize", draw);
 }
 
+
+// Every panel, and every instrument inside "Inside the instruments", folds away from its heading; the page remembers
+// which are folded (in this browser only).
+function foldable() {
+  let folded = [];
+  try { folded = JSON.parse(localStorage.getItem("lab-folded") || "[]"); } catch {}
+  const keep = () => { try { localStorage.setItem("lab-folded", JSON.stringify(folded)); } catch {} };
+  document.querySelectorAll("#page-music .layer, #page-music .maker").forEach((box, i) => {
+    const h = box.querySelector("h3, h4");
+    if (!h) return;
+    // The heading's words go inside a button; a heading that is rewritten (the band's) keeps its id on them.
+    const key = h.id || h.firstChild.textContent.trim() || "panel-" + i;
+    const b = document.createElement("button"); b.className = "fold"; b.type = "button";
+    const words = document.createElement("span");
+    while (h.firstChild) words.append(h.firstChild);
+    if (h.id) { words.id = h.id; h.removeAttribute("id"); }
+    b.append(words); h.append(b);
+    const set = (shut) => { box.classList.toggle("folded", shut); b.setAttribute("aria-expanded", !shut); };
+    set(folded.includes(key));
+    b.onclick = () => {
+      const shut = !box.classList.contains("folded");
+      set(shut);
+      folded = folded.filter((k) => k !== key); if (shut) folded.push(key);
+      keep();
+    };
+  });
+}
 
 // What sits in a seat, in words.
 const seatName = (s, kind) => (kind < 0 ? "nobody" : s === 4 ? DRUM_KINDS[kind] : VOICES[kind][0]);
