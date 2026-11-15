@@ -186,7 +186,7 @@ dialog.menu .maker[hidden] { display: none; }
 
   <section class="layers" aria-label="The band">
     <div class="layer" id="band">
-      <div class="head"><h3 id="band-title">Band</h3><span><button class="btn small" id="band-random" title="Another speed, other instruments, and other notes for every channel (drum pattern, bass line, tune and the rest)">Randomize tune</button> <button class="btn small" id="mix-clear">Clear mute and solo</button> <button class="btn small" id="band-built">Back to the built-in band</button> <button class="btn small" id="reset">Sliders as built</button></span></div>
+      <div class="head"><h3 id="band-title">Band</h3><span><button class="btn small" id="band-random" title="Another speed and other notes for every channel (drum pattern, bass line, tune and the rest); the instruments stay as set">Randomize tune</button> <button class="btn small" id="mix-clear">Clear mute and solo</button> <button class="btn small" id="band-built">Back to the built-in band</button> <button class="btn small" id="reset">Sliders as built</button></span></div>
       <p class="hint">What the whole band passes through. Changes come in on the next bar.</p>
       <div class="mixer" id="seats"></div>
     </div>
@@ -350,8 +350,6 @@ let mood = 1, playing = false, timer = null;
 // not begun, so it is never more than the bridge and a bit away.
 const AHEAD = 2.5, BARS_AHEAD = 3;
 const values = Object.fromEntries(KNOBS.map((k) => [k[0], plain(k)]));
-// The instruments each seat can be given (CHOICES[seat]).
-const CHOICES = [];
 // Who sits where: seated[tune][seat] = the instrument's number (-1 nobody), how loud, and what the
 // game has there. And the instruments' fine settings, by number: the value, as built, and its range.
 let seated = [], makes = [];
@@ -542,7 +540,6 @@ function buildBand() {
   SEATS.forEach(([name, about], s) => {
     const choices = [];
     for (let i = 0; lab.seat_choice(s, i) >= 0; i++) choices.push(lab.seat_choice(s, i));
-    CHOICES[s] = choices;
     // Its row beside the notes: its name, who sits in it, the number its notes are written from, mute, solo,
     // the instrument's settings and how loud it is.
     const head = document.createElement("div"); head.className = "head"; head.id = "head-" + s;
@@ -586,12 +583,12 @@ function buildBand() {
     input.addEventListener("input", () => { values[n] = Number(input.value); show(); });
     input.addEventListener("change", () => { values[n] = Number(input.value); show(); steer(); });
   }
-  // One button for a tune of the same kind made over: another speed, another instrument in every seat that has
-  // one, and other notes for every channel. "Back to the built-in band" and "Sliders as built" undo it.
+  // One button for a tune of the same kind made over: another speed and other notes for every channel. The
+  // instruments stay as set (sinan 2026-11-15: "can you make it keep the set instruments?"). "Back to the
+  // built-in band" and "Sliders as built" undo it.
   document.getElementById("band-random").onclick = () => {
     const any = (n) => Math.floor(Math.random() * n);
     seated[mood].forEach((x, s) => {
-      if (x.kind >= 0 && CHOICES[s].length) x.kind = CHOICES[s][any(CHOICES[s].length)];
       if (TAKES.includes(s)) x.take = 1 + any(9999);
     });
     const tempo = document.getElementById("knob-0");
