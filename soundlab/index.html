@@ -186,7 +186,7 @@ dialog.menu .maker[hidden] { display: none; }
 
   <section class="layers" aria-label="The band">
     <div class="layer" id="band">
-      <div class="head"><h3 id="band-title">Band</h3><span><button class="btn small" id="random-speed" title="Another speed for this tune">Random speed</button> <button class="btn small" id="random-drums" title="Another drum pattern; the kit stays as set">Random drum pattern</button> <button class="btn small" id="random-bass" title="Another bass line; the instrument stays as set">Random bass line</button> <button class="btn small" id="random-notes" title="Other notes for the tune, the second voice, the chords and the pad; the instruments stay as set">Random notes</button> <button class="btn small" id="mix-clear">Clear mute and solo</button> <button class="btn small" id="band-built">Back to the built-in band</button> <button class="btn small" id="reset">Sliders as built</button></span></div>
+      <div class="head"><h3 id="band-title">Band</h3><span><button class="btn small" id="random-drums" title="Another drum pattern; the kit stays as set">Random drum pattern</button> <button class="btn small" id="random-bass" title="Another bass line; the instrument stays as set">Random bass line</button> <button class="btn small" id="random-notes" title="Other notes for the tune, the second voice, the chords and the pad; the instruments stay as set">Random notes</button> <button class="btn small" id="mix-clear">Clear mute and solo</button> <button class="btn small" id="band-built">Back to the built-in band</button> <button class="btn small" id="reset">Sliders as built</button></span></div>
       <p class="hint">What the whole band passes through. Changes come in on the next bar.</p>
       <div class="mixer" id="seats"></div>
     </div>
@@ -584,17 +584,10 @@ function buildBand() {
     input.addEventListener("input", () => { values[n] = Number(input.value); show(); });
     input.addEventListener("change", () => { values[n] = Number(input.value); show(); steer(); });
   }
-  // A button each for another speed, another drum pattern and another bass line (sinan 2026-11-15: "can the buttons
-  // be separated? speed/drum pattern/bass line"). The instruments stay as set ("can you make it keep the set
-  // instruments?"). "Back to the built-in band" and "Sliders as built" undo them.
+  // A button each for another drum pattern, another bass line and other notes (sinan 2026-11-15: "can the buttons
+  // be separated? speed/drum pattern/bass line"; the speed's was the Tempo slider again and he had it removed).
+  // The instruments stay as set ("can you make it keep the set instruments?"). "Back to the built-in band" undoes them.
   const any = (n) => Math.floor(Math.random() * n);
-  document.getElementById("random-speed").onclick = () => {
-    const tempo = document.getElementById("knob-0");
-    let v; do { v = (15 + any(12)) / 20; } while (v === values[0]);
-    tempo.value = values[0] = v;
-    tempo.dispatchEvent(new Event("input"));
-    steer();
-  };
   // (Notes: the tune, the second voice, the chords and the pad.)
   for (const [id, rows] of [["random-drums", [4]], ["random-bass", [3]], ["random-notes", [0, 1, 2, 5]]]) {
     document.getElementById(id).onclick = () => { for (const s of rows) seated[mood][s].take = 1 + any(9999); showBand(); steer(); };
