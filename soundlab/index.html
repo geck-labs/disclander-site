@@ -92,12 +92,23 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
 .small { padding: 4px 10px; font-size: 0.85rem; }
 .layer .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .hint { color: var(--dim); font-size: 0.82rem; line-height: 1.4; margin: 0; }
-.seat { display: grid; gap: 6px; min-width: 0; align-content: start; }
-.seat select { background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 6px 8px; width: 100%; }
-.seat input[type=range] { width: 100%; accent-color: var(--gold); }
+/* The mixer: a channel strip a seat, upright, side by side, and the master. */
+.mixer { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.seat { flex: 1 0 112px; max-width: 190px; display: grid; gap: 8px; min-width: 0; align-content: start; justify-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 10px 8px; }
+.seat.master { border-color: var(--dim); }
+.seat select { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 6px 4px; width: 100%; font-size: 0.85rem; }
+.seat .who { width: 100%; min-height: 2.1rem; display: grid; align-items: center; text-align: center; color: var(--dim); font-size: 0.85rem; }
+.seat input[type=range] { writing-mode: vertical-lr; direction: rtl; width: 28px; height: 150px; accent-color: var(--gold); }
 .seat input[type=range]:disabled { opacity: 0.35; }
-.seat .top { display: flex; justify-content: space-between; gap: 8px; }
-.seat output { font-family: var(--mono); color: var(--gold); font-variant-numeric: tabular-nums; }
+.seat .top { display: grid; justify-items: center; gap: 2px; }
+.seat output { font-family: var(--mono); color: var(--gold); font-variant-numeric: tabular-nums; min-height: 1.2em; }
+.seat .ms { display: flex; gap: 6px; }
+.seat .ms button { width: 34px; height: 30px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; cursor: pointer; font-family: var(--mono); }
+.seat .ms button:hover { border-color: var(--dim); }
+.seat .ms .mute[aria-pressed="true"] { background: #5a2a2a; border-color: #c95f6b; color: #ffd0d0; }
+.seat .ms .solo[aria-pressed="true"] { background: #4a4216; border-color: var(--gold); color: var(--gold); }
+.seat.silent .label, .seat.silent output { color: var(--dim); text-decoration: line-through; }
+.seat .hint { text-align: center; }
 .seat.changed .label, .knob.changed .label { color: var(--gold); }
 .maker { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
 .maker h4 { font-family: var(--display); font-weight: 400; font-size: 1rem; margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
@@ -148,9 +159,9 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
 
   <section class="layers" aria-label="The band">
     <div class="layer" id="band">
-      <div class="head"><h3 id="band-title">Band</h3><button class="btn small" id="band-built">Back to the built-in band</button></div>
-      <p class="hint">Who sits in each seat of this tune's band. Pick another instrument for a seat, or nobody, and set how loud that seat is. It changes on the next bar. Every tune keeps its own band.</p>
-      <div class="knobs" id="seats"></div>
+      <div class="head"><h3 id="band-title">Band</h3><span><button class="btn small" id="mix-clear">Clear mute and solo</button> <button class="btn small" id="band-built">Back to the built-in band</button></span></div>
+      <p class="hint">The mixer: one channel for each seat of this tune's band, and the master that everything passes through. On a channel, pick the instrument (or nobody), slide the fader for how loud it is, press M to mute it (silence this one) or S to solo it (silence all the others, to hear what it is doing). Instrument and fader change on the next bar and every tune keeps its own; mute and solo stay as you switch tunes and are not part of the settings you send back.</p>
+      <div class="mixer" id="seats"></div>
     </div>
     <div class="layer" id="makers">
       <div class="head"><h3>Inside the instruments</h3><button class="btn small" id="make-built">Instruments as built</button></div>
@@ -502,17 +513,33 @@ function buildBand() {
     const choices = [];
     for (let i = 0; lab.seat_choice(s, i) >= 0; i++) choices.push(lab.seat_choice(s, i));
     const d = document.createElement("div"); d.className = "seat"; d.id = "seatbox-" + s;
-    d.innerHTML = `<div class="top"><label class="label" for="seat-${s}">${name}</label><output id="seat-${s}-out"></output></div>`
+    d.innerHTML = `<div class="top"><label class="label" for="seat-${s}">${name}</label></div>`
       + `<select id="seat-${s}"><option value="-1">nobody</option>${choices.map((k) => `<option value="${k}">${seatName(s, k)}</option>`).join("")}</select>`
+      + `<div class="ms"><button class="mute" id="seat-${s}-mute" aria-pressed="false" aria-label="Mute ${name}" title="Mute: silence this channel">M</button>`
+      + `<button class="solo" id="seat-${s}-solo" aria-pressed="false" aria-label="Solo ${name}" title="Solo: silence all the others">S</button></div>`
       + `<input id="seat-${s}-loud" type="range" min="0.1" max="2" step="0.05" value="1" aria-label="${name} loudness">`
+      + `<output id="seat-${s}-out"></output>`
       + `<p class="hint">${about}</p>`;
     box.append(d);
     const pick = d.querySelector("select"), loud = d.querySelector("input");
     const here = () => seated[mood][s];
+    d.querySelector(".mute").onclick = () => { mix.mute[s] = !mix.mute[s]; showBand(); steer(); };
+    d.querySelector(".solo").onclick = () => { mix.solo[s] = !mix.solo[s]; showBand(); steer(); };
     pick.addEventListener("change", () => { here().kind = Number(pick.value); showBand(); steer(); });
     loud.addEventListener("input", () => { here().loud = Number(loud.value); showBand(); });
     loud.addEventListener("change", () => { here().loud = Number(loud.value); steer(); });
   });
+  // The master: the music's own volume, as a channel.
+  const m = document.createElement("div"); m.className = "seat master";
+  m.innerHTML = `<div class="top"><label class="label" for="mix-master">Master</label></div><div class="who">everything</div><div class="ms"></div>`
+    + `<input id="mix-master" type="range" min="0" max="1.5" step="0.05" value="1" aria-label="Master loudness"><output id="mix-master-out">1.00x</output>`
+    + `<p class="hint">All the channels together.</p>`;
+  box.append(m);
+  const master = m.querySelector("input"), music = document.getElementById("vol-music");
+  const both = (from, to) => { to.value = from.value; document.getElementById("mix-master-out").textContent = Number(from.value).toFixed(2) + "x"; };
+  master.addEventListener("input", () => { both(master, music); music.dispatchEvent(new Event("input")); });
+  music.addEventListener("input", () => both(music, master));
+  document.getElementById("mix-clear").onclick = () => { mix.mute.fill(false); mix.solo.fill(false); showBand(); steer(); };
   document.getElementById("band-built").onclick = () => {
     for (const x of seated[mood]) { x.kind = x.built; x.loud = 1; }
     showBand(); steer();
@@ -545,6 +572,9 @@ function showBand() {
     const pick = document.getElementById("seat-" + s), loud = document.getElementById(`seat-${s}-loud`);
     pick.value = x.kind; loud.value = x.loud; loud.disabled = x.kind < 0;
     document.getElementById(`seat-${s}-out`).textContent = x.kind < 0 ? "" : x.loud.toFixed(2) + "x";
+    document.getElementById(`seat-${s}-mute`).setAttribute("aria-pressed", mix.mute[s]);
+    document.getElementById(`seat-${s}-solo`).setAttribute("aria-pressed", mix.solo[s]);
+    document.getElementById("seatbox-" + s).classList.toggle("silent", silenced(s));
     document.getElementById("seatbox-" + s).classList.toggle("changed", x.kind !== x.built || (x.kind >= 0 && x.loud !== 1));
   });
   const groups = document.querySelectorAll("#makers .maker");
@@ -562,10 +592,18 @@ function showBand() {
 }
 
 // The seats and fine settings that are not as built, for the band's worker and for the settings text.
-function bandNow() {
+// The mixer's mute and solo, a channel a seat, the same for every tune: a channel is silent when it is muted, or
+// when another is soloed and it is not.
+const mix = { mute: SEATS.map(() => false), solo: SEATS.map(() => false) };
+const silenced = (s) => mix.mute[s] || (mix.solo.some(Boolean) && !mix.solo[s]);
+
+// The bands as they are set, for the settings text; `heard`, as they are to sound, with mute and solo.
+function bandNow(heard = false) {
   const seats = [];
   seated.forEach((list, m) => list.forEach((x, s) => {
-    if (x.kind !== x.built || (x.kind >= 0 && x.loud !== 1)) seats.push([m, s, x.kind, x.loud]);
+    const off = heard && silenced(s) && x.kind >= 0;
+    if (off) seats.push([m, s, x.kind, 0]);
+    else if (x.kind !== x.built || (x.kind >= 0 && x.loud !== 1)) seats.push([m, s, x.kind, x.loud]);
   }));
   return { seats, makes: makes.map((x, i) => [i, x.v]).filter(([i, v]) => v !== makes[i].built) };
 }
@@ -741,7 +779,7 @@ function steer() {
   const ahead = bars.filter((b) => b.at > soon);
   for (const b of ahead) { try { b.src.stop(); } catch {} }
   if (ahead.length) { bars = bars.filter((b) => !ahead.includes(b)); frames = ahead[0].frame; }
-  writer.postMessage({ cmd: "steer", back: ahead.length + (asked ? 1 : 0), mood, knobs: knobsNow(), band: bandNow() });
+  writer.postMessage({ cmd: "steer", back: ahead.length + (asked ? 1 : 0), mood, knobs: knobsNow(), band: bandNow(true) });
   gen++;
   pump();
 }
@@ -749,7 +787,7 @@ function steer() {
 function start() {
   if (ctx.state === "suspended") ctx.resume();
   if (mx.state === "suspended") mx.resume();
-  writer.postMessage({ cmd: "start", mood, seed: Number(document.getElementById("seed").value) || 0, knobs: knobsNow(), band: bandNow() });
+  writer.postMessage({ cmd: "start", mood, seed: Number(document.getElementById("seed").value) || 0, knobs: knobsNow(), band: bandNow(true) });
   gen++;
   for (const b of bars) { try { b.src.stop(); } catch {} }
   bars = []; t0 = mx.currentTime + 0.1; frames = 0; playing = true;
