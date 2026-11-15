@@ -135,8 +135,11 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
   <section class="transport" aria-label="Playback">
     <button class="btn play" id="play">Play</button>
     <label class="seed" for="seed">seed <input id="seed" type="number" min="0" max="99999" value="1"></label>
+    <button class="mood" id="game" aria-pressed="false">Game listen</button>
+    <label class="seed" for="game-speed">day <select id="game-speed"><option value="1">as in the game (24 min)</option><option value="4">4 times as fast (6 min)</option></select></label>
     <span class="status" id="status">pick a tune, press Play</span>
   </section>
+  <p class="note" id="game-line" hidden></p>
 
   <section class="roll" aria-label="Notes of the piece">
     <canvas id="roll" width="1040" height="260"></canvas>
@@ -167,7 +170,7 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.4rem; margin: 0
       <button class="btn" id="reset">Reset knobs</button>
     </div>
   </section>
-  <p class="note">One band plays without stopping, writing the music a bar at a time. There are no songs: it never begins again and never ends. Pick another tune and the band turns on the next bar, in the middle of things, its speed sliding over the bars after. There is no slow and fast style of a tune any more: a fast tune is a tune of its own, and Chase is the first. Into Chase the beat drops in: the band thins out over the lead-in, falls silent for a beat, and everything lands at once; while it stays on Chase it breaks down and drops again now and then, every other time with the bass landing a bar and a half late. In the fast tunes (Chase, Battle, Siege, Raid) everything but the drums dips a little as each kick lands (the Pumping knob under Mix; 0 turns it off). Chase is built on one track: a steady 116 beats a minute, the kick drum on beats one and three and once more just before the bar ends, the snare on two and four, a heavy growling bass on one low note that steps up for the middle of each bar and back. Its parts go twice as quick as that track's (hats and tune in sixteenth notes, the bass struck twice a beat), and its band is a rock band: two overdriven guitars, one to each side, chugging the bass's note low and short, a third with the tune, and no soft pad. The kick and snare are loud, with a low thump under each main kick and a run of quick kicks closing every fourth bar, and the bass hits hardest on beats one and three. Chase also moves between four parts, four or eight bars each, picked as it goes and named in the line under the buttons: its main part; the charge (a kick every half beat, guitars and bass twice as quick, the tune higher); half speed (one kick and one snare a bar, long ringing guitar notes); and the stops (guitars, bass and kick strike together six times a bar with gaps between, and the tune rests). Battle and Siege are built the same way as Chase, with the same four parts, and differ in what you can hear at once: Battle (124 beats a minute) is the hardest: its kick drum gallops along with the guitars on every beat, and its tune is on a lead guitar (one string through an amplifier turned all the way up, so a note never dies away, slid up into and shaken); Siege is the quickest (152), with deep war drums in place of most of the kit, a choir held underneath, and its tune on a rock organ (a thick sound with the octave under each note in it, growling and throbbing through a turning speaker). Raid (140) has a kit whose snare comes twice as often as the others', a bass that moves a bar at a time, and its tune on a guitar through a wah pedal (each note opens from hollow to bright, so it seems to say "wah"). A war horn is also in the instrument lists. Each fast tune drops in its own way, from another tune and after each breakdown: Chase after a swelling snare and a silent beat; Battle after a kick drum rolling louder and louder with no silence; Siege after war drums gathering speed over a low organ note; Raid after a bar where everyone stops but one guitar and four clicks of the sticks. The upright lines in the picture are the bars. When something sounds right, copy the settings and send them over, and they become the game's own. The settings text lists every band and instrument you have changed, for all the tunes.</p>
+  <p class="note">One band plays without stopping, writing the music a bar at a time. There are no songs: it never begins again and never ends. Pick another tune and the band turns on the next bar, in the middle of things, its speed sliding over the bars after. There is no slow and fast style of a tune any more: a fast tune is a tune of its own, and Chase is the first. Into Chase the beat drops in: the band thins out over the lead-in, falls silent for a beat, and everything lands at once; while it stays on Chase it breaks down and drops again now and then, every other time with the bass landing a bar and a half late. In the fast tunes (Chase, Battle, Siege, Raid) everything but the drums dips a little as each kick lands (the Pumping knob under Mix; 0 turns it off). Chase is built on one track: a steady 116 beats a minute, the kick drum on beats one and three and once more just before the bar ends, the snare on two and four, a heavy growling bass on one low note that steps up for the middle of each bar and back. Its parts go twice as quick as that track's (hats and tune in sixteenth notes, the bass struck twice a beat), and its band is a rock band: two overdriven guitars, one to each side, chugging the bass's note low and short, a third with the tune, and no soft pad. The kick and snare are loud, with a low thump under each main kick and a run of quick kicks closing every fourth bar, and the bass hits hardest on beats one and three. Chase also moves between four parts, four or eight bars each, picked as it goes and named in the line under the buttons: its main part; the charge (a kick every half beat, guitars and bass twice as quick, the tune higher); half speed (one kick and one snare a bar, long ringing guitar notes); and the stops (guitars, bass and kick strike together six times a bar with gaps between, and the tune rests). Battle and Siege are built the same way as Chase, with the same four parts, and differ in what you can hear at once: Battle (124 beats a minute) is the hardest: its kick drum gallops along with the guitars on every beat, and its tune is on a lead guitar (one string through an amplifier turned all the way up, so a note never dies away, slid up into and shaken); Siege is the quickest (152), with deep war drums in place of most of the kit, a choir held underneath, and its tune on a rock organ (a thick sound with the octave under each note in it, growling and throbbing through a turning speaker). Raid (140) has a kit whose snare comes twice as often as the others', a bass that moves a bar at a time, and its tune on a guitar through a wah pedal (each note opens from hollow to bright, so it seems to say "wah"). A war horn is also in the instrument lists. Each fast tune drops in its own way, from another tune and after each breakdown: Chase after a swelling snare and a silent beat; Battle after a kick drum rolling louder and louder with no silence; Siege after war drums gathering speed over a low organ note; Raid after a bar where everyone stops but one guitar and four clicks of the sticks. The upright lines in the picture are the bars. Game listen plays as a session of the game would sound: a seed nobody chose, the hour's tune as the day goes round (a game hour is a minute; Dawn and Dusk are the hour either side of sunrise and sunset), and now and then a chase, a battle, a raid or a siege whose fast tune drops in, stays while it lasts and gives way to the hour's tune again. The line under the buttons says the game's time and what is happening. Pick a tune by hand or press Stop to leave it. When something sounds right, copy the settings and send them over, and they become the game's own. The settings text lists every band and instrument you have changed, for all the tunes.</p>
 
   </div>
 
@@ -406,7 +409,7 @@ function buildUi() {
     const b = document.createElement("button");
     b.className = "mood"; b.textContent = name; b.id = "mood-" + i;
     b.setAttribute("aria-pressed", i === mood);
-    b.onclick = () => { mood = i; MOODS.forEach((_, j) => document.getElementById("mood-" + j).setAttribute("aria-pressed", j === mood)); steer(); };
+    b.onclick = () => { gameOff(); pickMood(i); };
     row.append(b);
   });
   const layers = document.getElementById("knobs");
@@ -440,8 +443,9 @@ function buildUi() {
   buildBand();
   foldable();
   // Volume sliders made before the sounds load are hooked up when audio starts.
-  document.getElementById("play").onclick = () => (playing ? stop() : start());
-  document.getElementById("seed").addEventListener("change", () => { writeSettings(); if (playing) { stop(); start(); } });
+  document.getElementById("play").onclick = () => { if (playing) { gameOff(); stop(); } else start(); };
+  document.getElementById("game").onclick = () => (game.on ? gameOff() : gameOn());
+  document.getElementById("seed").addEventListener("change", () => { gameOff(); writeSettings(); if (playing) { stop(); start(); } });
   document.getElementById("reset").onclick = () => {
     // Every knob back to the mood's own.
     for (const k of KNOBS) { values[k[0]] = plain(k); const el = document.getElementById("knob-" + k[0] + (k[4] ? "-" + k[4] : "")); el.value = values[k[0]]; el.dispatchEvent(new Event("input")); }
@@ -660,6 +664,75 @@ function lineUp(m) {
 // A new tune or knob: the bars lined up but not yet begun are taken back and written again (with a bar that
 // is being written just now). The band makes the first three of them a bridge to the new tune (still the
 // old band, leading in), which comes in on the bar after; a knob comes in on the first.
+// Picks a tune, as its button does.
+function pickMood(i) {
+  mood = i;
+  MOODS.forEach((_, j) => document.getElementById("mood-" + j).setAttribute("aria-pressed", j === mood));
+  steer();
+}
+
+// Game listen (sinan 2026-11-14: "can you add a game listen mode"): the lab plays as a session of the game would
+// sound. A seed nobody chose; the hour's tune as the day goes round (an hour is a minute, as in the game: dawn and
+// dusk the hour either side of sunrise at 6 and sunset at 18); and now and then something happens (a chase, a battle,
+// a raid, a siege) and its fast tune drops in, stays while it lasts, and gives way to the hour's tune again. Picking
+// a tune by hand or pressing Stop leaves the mode.
+const game = { on: false, timer: null, clock: 0, last: 0, event: null, next: 0 };
+// What can happen: its tune, how likely, and how long it lasts, s.
+const EVENTS = [
+  { name: "a chase", tune: 5, weight: 4, secs: [35, 75] },
+  { name: "a battle", tune: 6, weight: 3, secs: [50, 110] },
+  { name: "a raid", tune: 8, weight: 2, secs: [40, 80] },
+  { name: "a siege", tune: 7, weight: 1, secs: [90, 160] },
+];
+const between = ([a, b]) => a + Math.random() * (b - a);
+const hourTune = (h) => (Math.abs(h - 6) < 1 ? 0 : Math.abs(h - 18) < 1 ? 2 : h > 6 && h < 18 ? 1 : 3);
+
+function gameOn() {
+  game.on = true; game.clock = 5.5 * 60; game.last = performance.now(); game.event = null;
+  game.next = performance.now() + 1000 * between([40, 80]);
+  document.getElementById("seed").value = Math.floor(Math.random() * 100000);
+  document.getElementById("game").setAttribute("aria-pressed", "true");
+  document.getElementById("game-line").hidden = false;
+  mood = hourTune(5.5);
+  MOODS.forEach((_, j) => document.getElementById("mood-" + j).setAttribute("aria-pressed", j === mood));
+  if (seated.length) showBand();
+  writeSettings();
+  if (playing) stop();
+  start();
+  game.timer = setInterval(gameTick, 500);
+  gameTick();
+}
+
+function gameOff() {
+  if (!game.on) return;
+  game.on = false; clearInterval(game.timer);
+  document.getElementById("game").setAttribute("aria-pressed", "false");
+  document.getElementById("game-line").hidden = true;
+}
+
+function gameTick() {
+  const now = performance.now(), f = (n) => String(Math.floor(n)).padStart(2, "0");
+  // The game's clock, s: an hour is a minute.
+  game.clock += (now - game.last) / 1000 * Number(document.getElementById("game-speed").value);
+  game.last = now;
+  const hour = (game.clock / 60) % 24, day = 1 + Math.floor(game.clock / 60 / 24);
+  if (game.event && now >= game.event.until) {
+    game.event = null;
+    game.next = now + 1000 * between([60, 150]);
+  } else if (!game.event && now >= game.next) {
+    let pick = Math.random() * EVENTS.reduce((a, e) => a + e.weight, 0);
+    const e = EVENTS.find((e) => (pick -= e.weight) < 0) ?? EVENTS[0];
+    game.event = { ...e, until: now + 1000 * between(e.secs) };
+  }
+  const want = game.event ? game.event.tune : hourTune(hour);
+  if (want !== mood) pickMood(want);
+  const left = (t) => { const s = Math.max(0, (t - now) / 1000); return `${Math.floor(s / 60)}:${f(s % 60)}`; };
+  document.getElementById("game-line").textContent =
+    `Game listen · day ${day}, ${f(hour)}:${f((hour % 1) * 60)} · ` +
+    (game.event ? `${game.event.name}: ${MOODS[game.event.tune]} for another ${left(game.event.until)}`
+      : `quiet: ${MOODS[hourTune(hour)]}, something happens in ${left(game.next)}`);
+}
+
 function steer() {
   if (seated.length) showBand();
   writeSettings();
