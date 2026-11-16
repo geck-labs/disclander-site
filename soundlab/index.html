@@ -43,6 +43,9 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .play { background: var(--gold); color: #1a1408; border-color: var(--gold); min-width: 92px; }
 .play:hover { border-color: var(--fg); }
 .seed { display: flex; align-items: center; gap: 6px; font-family: var(--mono); }
+.songs { margin-top: 10px; }
+.songs input[type=text], .songs select { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 7px 8px; min-width: 0; max-width: 100%; font: inherit; color: inherit; }
+.songs input[type=text] { width: 12em; }
 .seed input { width: 5.5em; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 7px 8px; font-variant-numeric: tabular-nums; }
 .status { font-family: var(--mono); color: var(--dim); font-variant-numeric: tabular-nums; margin-left: auto; }
 .check { display: flex; align-items: center; gap: 6px; color: var(--dim); }
@@ -178,6 +181,15 @@ dialog.menu .maker[hidden] { display: none; }
     <span class="status" id="status">pick a tune, press Play</span>
   </section>
   <p class="note" id="game-line" hidden></p>
+  <section class="transport songs" aria-label="Songs">
+    <input id="song-name" type="text" maxlength="40" placeholder="song name" aria-label="Song name">
+    <button class="btn small" id="song-save" title="Keep this song in this browser under its name">Save</button>
+    <select id="song-list" aria-label="Saved songs" title="Load a saved song"><option value="">saved songs</option></select>
+    <button class="btn small" id="song-delete" title="Remove the picked song from the list">Delete</button>
+    <button class="btn small" id="song-export" title="Download this song as a file">Export</button>
+    <button class="btn small" id="song-import" title="Load a song from a file">Import</button>
+    <input id="song-file" type="file" accept=".json,application/json" hidden>
+  </section>
 
   <section class="roll" aria-label="Notes of the piece">
     <div class="tracks"><div class="heads" id="heads"></div><canvas id="roll" width="890" height="336"></canvas></div>
@@ -566,6 +578,7 @@ function buildUi() {
     try { await navigator.clipboard.writeText(t.value); flash("copied"); } catch { t.select(); flash("selected: copy it with Ctrl+C"); }
   };
   window.addEventListener("resize", draw);
+  songsSetup();
 }
 
 
@@ -749,6 +762,100 @@ function bandNow(heard = false) {
   const takes = [];
   seated.forEach((list, m) => list.forEach((x, s) => { if (x.take) takes.push([m, s, x.take]); }));
   return { seats, takes, wrote: Number(document.getElementById("seed").value) || 0, makes: makes.map((x, i) => [i, x.v]).filter(([i, v]) => v !== makes[i].built) };
+}
+
+// Songs (sinan 2026-11-16: "we need to be able to save/load the songs"). A song is not sound: it is the tune, the
+// seed that writes it, and whatever of the band, the sliders and the instruments is not as that seed has it. The same
+// song is the same music wherever it is loaded. They are kept by name in this browser, and go in and out as files.
+const SONGS = "disclander-songs";
+function songNow() {
+  const now = bandNow();
+  return {
+    disclander_song: 1,
+    name: document.getElementById("song-name").value.trim() || `${MOODS[mood]} ${now.wrote}`,
+    tune: mood === FAST ? "fast" : "slow",
+    seed: now.wrote,
+    knobs: KNOBS.filter((k) => values[k[0]] !== plain(k)).map((k) => [k[0], values[k[0]]]),
+    seats: now.seats.filter((a) => a[0] === mood).map((a) => a.slice(1)),
+    takes: now.takes.filter((a) => a[0] === mood).map((a) => a.slice(1)),
+    makes: now.makes,
+  };
+}
+
+// Whether `x` is a song this page can load.
+const isSong = (x) => !!x && x.disclander_song === 1 && (x.tune === "fast" || x.tune === "slow") && Number.isFinite(x.seed)
+  && [x.knobs, x.seats, x.takes, x.makes].every((l) => Array.isArray(l) && l.every((a) => Array.isArray(a) && a.every(Number.isFinite)));
+
+function songLoad(x) {
+  if (!isSong(x)) { flash("not a song file"); return false; }
+  gameOff();
+  const was = playing;
+  if (was) stop();
+  mood = x.tune === "fast" ? FAST : SLOW;
+  SHOWN.forEach((j) => document.getElementById("mood-" + j).setAttribute("aria-pressed", j === mood));
+  document.getElementById("seed").value = Math.max(0, Math.min(99999, Math.round(x.seed)));
+  document.getElementById("song-name").value = String(x.name ?? "").slice(0, 40);
+  rewrite();
+  for (const [st, kind, loud] of x.seats) { const h = seated[mood][st]; if (h) { h.kind = kind; h.loud = loud > 0 ? loud : 1; } }
+  for (const [st, take] of x.takes) { const h = seated[mood][st]; if (h) h.take = take; }
+  for (const k of KNOBS) {
+    const set = x.knobs.find((a) => a[0] === k[0]);
+    values[k[0]] = set ? set[1] : plain(k);
+    const el = document.getElementById("knob-" + k[0]); el.value = values[k[0]]; values[k[0]] = Number(el.value); el.dispatchEvent(new Event("input"));
+  }
+  makes.forEach((m, i) => { const set = x.makes.find((a) => a[0] === i); m.v = set ? Math.max(m.lo, Math.min(m.hi, set[1])) : m.built; });
+  mix.mute.fill(false); mix.solo.fill(false);
+  showBand(); writeSettings();
+  if (was) start();
+  return true;
+}
+
+// The songs kept in this browser, by name (none where the browser keeps nothing).
+function songsKept() { try { const all = JSON.parse(localStorage.getItem(SONGS) || "{}"); return all && typeof all === "object" ? all : {}; } catch { return {}; } }
+function songsKeep(all) { try { localStorage.setItem(SONGS, JSON.stringify(all)); return true; } catch { return false; } }
+function songsList(pick = "") {
+  const list = document.getElementById("song-list");
+  list.innerHTML = `<option value="">saved songs</option>`;
+  for (const name of Object.keys(songsKept()).sort()) { const o = document.createElement("option"); o.value = name; o.textContent = name; list.append(o); }
+  list.value = pick;
+}
+function songsSetup() {
+  songsList();
+  document.getElementById("song-save").onclick = () => {
+    const song = songNow(), all = songsKept();
+    all[song.name] = song;
+    document.getElementById("song-name").value = song.name;
+    flash(songsKeep(all) ? `saved "${song.name}"` : "this browser would not keep it: use Export");
+    songsList(song.name);
+  };
+  document.getElementById("song-list").addEventListener("change", (e) => {
+    const song = songsKept()[e.target.value];
+    if (song && songLoad(song)) flash(`loaded "${song.name}"`);
+  });
+  document.getElementById("song-delete").onclick = () => {
+    const name = document.getElementById("song-list").value, all = songsKept();
+    if (!name || !(name in all)) { flash("pick a saved song first"); return; }
+    delete all[name]; songsKeep(all); songsList(); flash(`deleted "${name}"`);
+  };
+  document.getElementById("song-export").onclick = () => {
+    const song = songNow();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(song, null, 1)], { type: "application/json" }));
+    a.download = song.name.replace(/[^A-Za-z0-9 _-]/g, "").trim().replace(/ +/g, "-") + ".song.json";
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  const file = document.getElementById("song-file");
+  document.getElementById("song-import").onclick = () => file.click();
+  file.addEventListener("change", async () => {
+    const f = file.files[0]; file.value = "";
+    if (!f) return;
+    let song = null;
+    try { song = JSON.parse(await f.text()); } catch {}
+    if (!songLoad(song)) return;
+    const all = songsKept(); all[song.name || f.name] = song; songsKeep(all); songsList(song.name || f.name);
+    flash(`loaded "${song.name || f.name}"`);
+  });
 }
 
 function flash(msg) { document.getElementById("status").textContent = msg; setTimeout(status, 1500); }
